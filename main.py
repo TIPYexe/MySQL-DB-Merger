@@ -8,53 +8,6 @@ import re
 # ex: provider, providerregions
 #   : regions, providerregions
 
-def mergeTabels(db_to_merge, db_main, table1, table2, table3, key_table_1, key_table_2_1, key_table_3, key_table_2_3):
-    mydb1 = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database=db_to_merge
-    )
-
-    mydb2 = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database=db_main
-    )
-
-    # mycursor1 = mydb1.cursor()
-
-    # # extract column names and concat them in a string, separated by "', '"
-    # mycursor1.execute(
-    #     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = N'" + table1 + "' AND TABLE_SCHEMA = '" + db_to_merge + "' ORDER BY ORDINAL_POSITION ASC")
-    # columnsRaw = mycursor1.fetchall()
-    # columnNames = list(map(lambda x: re.sub("[(),']", "", str(x)), columnsRaw))
-    # columnCommand = "'" + "', '".join(columnNames) + "'"
-    #
-    # # extract data types
-    # # NUMERIC_PRECISION = null for non-numeric values
-    # mycursor1.execute(
-    #     "SELECT NUMERIC_PRECISION FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = N'" + table1 + "' AND TABLE_SCHEMA = '" + db_to_merge + "' ORDER BY ORDINAL_POSITION ASC")
-    # dataTypeRaw = mycursor1.fetchall()
-    # dataTypes = list(map(lambda x: re.sub("[(),']", "", str(x)), dataTypeRaw))
-
-    table_1_merge = "`" + db_to_merge + "`.`" + table1 + "`"
-    table_2_merge = "`" + db_to_merge + "`.`" + table2 + "`"
-    table_1_main = "`" + db_main + "`.`" + table1 + "`"
-    table_2_main = "`" + db_main + "`.`" + table2 + "`"
-    table_3_main = "`" + db_main + "`.`" + table3 + "`"
-    table_3_merge = "`" + db_to_merge + "`.`" + table3 + "`"
-
-    sameIdConflictIssueSolver(mydb1, mydb2, table_1_merge, table_2_merge, table_1_main, key_table_1, key_table_2_1, 0, 2)
-    sameIdConflictIssueSolver(mydb1, mydb2, table_3_merge, table_2_merge, table_3_main, key_table_3, key_table_2_3, 0, 1)
-    # 0 = id, 2 = type, 0 = skips no columns | 3 = providerId, 4 = regionId, 1 = skips the 1st column
-    mergeTheNewData(mydb1, mydb2, table_1_merge, table_1_main, 0, 2, 0, 0)
-    mergeTheNewData(mydb1, mydb2, table_3_merge, table_3_main, 0, 1, 0, 2)
-    mergeTheNewData(mydb1, mydb2, table_2_merge, table_2_main, 3, 4, 1, 0)
-    mydb2.commit()
-
-
 # will assign a new and unique ID to each
 def sameIdConflictIssueSolver(mydb1, mydb2, table_1_merge, table_2_merge, table_1_main, key_1, key_2, i, j):
     mycursos_1_merge = mydb1.cursor()
@@ -133,9 +86,69 @@ def mergeTheNewData(mydb1, mydb2, table_1_merge, table_1_main, i, j, skip, stop)
             dataCommand = dataCommand.replace("'None'", "''")
 
             # insert si in tabel_2
-            print("INSERT INTO " + table_1_main + " (" + columnCommand + ") VALUES (" + dataCommand + ");")
-            mycursor2.execute("INSERT INTO " + table_1_main + " (" + columnCommand + ") VALUES (" + dataCommand + ");")
+            # print("INSERT INTO " + table_1_main + " (" + columnCommand + ") VALUES (" + dataCommand + ");")
+            sql = "INSERT INTO " + table_1_main + " (" + columnCommand + ") VALUES ("
+            print(sql, dataCommand)
+            mycursor2.execute(sql, dataCommand, ");")
 
+    mydb2.commit()
+
+
+def setMetadata(mydb, table, key):
+    mycursor = mydb.cursor()
+    # mycursor.execute("SET SQL_SAFE_UPDATES = 0;")
+    mycursor.execute("UPDATE " + table + " SET " + key + " = '{}' WHERE " + key + " IS NULL;")
+
+    mydb.commit()
+
+
+def mergeTabels(db_to_merge, db_main, table1, table2, table3, key_table_1, key_table_2_1, key_table_3, key_table_2_3):
+    mydb1 = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database=db_to_merge
+    )
+
+    mydb2 = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database=db_main
+    )
+
+    # mycursor1 = mydb1.cursor()
+
+    # # extract column names and concat them in a string, separated by "', '"
+    # mycursor1.execute(
+    #     "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = N'" + table1 + "' AND TABLE_SCHEMA = '" + db_to_merge + "' ORDER BY ORDINAL_POSITION ASC")
+    # columnsRaw = mycursor1.fetchall()
+    # columnNames = list(map(lambda x: re.sub("[(),']", "", str(x)), columnsRaw))
+    # columnCommand = "'" + "', '".join(columnNames) + "'"
+    #
+    # # extract data types
+    # # NUMERIC_PRECISION = null for non-numeric values
+    # mycursor1.execute(
+    #     "SELECT NUMERIC_PRECISION FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = N'" + table1 + "' AND TABLE_SCHEMA = '" + db_to_merge + "' ORDER BY ORDINAL_POSITION ASC")
+    # dataTypeRaw = mycursor1.fetchall()
+    # dataTypes = list(map(lambda x: re.sub("[(),']", "", str(x)), dataTypeRaw))
+
+    table_1_merge = "`" + db_to_merge + "`.`" + table1 + "`"
+    table_1_main = "`" + db_main + "`.`" + table1 + "`"
+    table_2_merge = "`" + db_to_merge + "`.`" + table2 + "`"
+    table_2_main = "`" + db_main + "`.`" + table2 + "`"
+    table_3_merge = "`" + db_to_merge + "`.`" + table3 + "`"
+    table_3_main = "`" + db_main + "`.`" + table3 + "`"
+
+    setMetadata(mydb1, table_1_merge, 'metadata')
+    setMetadata(mydb1, table_2_merge, 'metadata')
+    setMetadata(mydb1, table_3_merge, 'center')
+    sameIdConflictIssueSolver(mydb1, mydb2, table_1_merge, table_2_merge, table_1_main, key_table_1, key_table_2_1, 0, 2)
+    sameIdConflictIssueSolver(mydb1, mydb2, table_3_merge, table_2_merge, table_3_main, key_table_3, key_table_2_3, 0, 1)
+    # 0 = id, 2 = type, 0 = skips no columns | 3 = providerId, 4 = regionId, 1 = skips the 1st column
+    mergeTheNewData(mydb1, mydb2, table_1_merge, table_1_main, 0, 2, 0, 0)
+    mergeTheNewData(mydb1, mydb2, table_3_merge, table_3_main, 0, 1, 0, 2)
+    mergeTheNewData(mydb1, mydb2, table_2_merge, table_2_main, 3, 4, 1, 0)
     mydb2.commit()
 
 
